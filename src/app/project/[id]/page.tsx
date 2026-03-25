@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { ApiKeyModal } from "@/components/settings/ApiKeyModal";
 import { getAIConfig, PROVIDER_LABELS } from "@/lib/ai/providers";
+import { DeployModal } from "@/components/project/DeployModal";
 
 export default function ProjectEditorPage() {
   const { id } = useParams();
@@ -27,6 +28,8 @@ export default function ProjectEditorPage() {
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
   const [providerLabel, setProviderLabel] = useState("");
   const [bootError, setBootError] = useState<string | null>(null);
+  const [projectSlug, setProjectSlug] = useState<string>("");
+  const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
 
   useEffect(() => {
     const handleOpenModal = () => setIsApiKeyModalOpen(true);
@@ -71,6 +74,7 @@ export default function ProjectEditorPage() {
     }
 
     setProjectName(project.name);
+    setProjectSlug(project.slug || "");
 
     // 2. Load files into store
     const initialFiles = Object.keys(project.files).length > 0 
@@ -162,32 +166,35 @@ export default function ProjectEditorPage() {
 
   const [deploying, setDeploying] = useState(false);
 
-  const handleDeploy = async () => {
-    setDeploying(true);
-    toast.info("Deploying project to preview Netlify instance...");
+  const handleDeploy = async (slug: string): Promise<string | null> => {
     try {
       const res = await fetch("/api/deploy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ files })
+        body: JSON.stringify({ 
+          files,
+          projectId: id,
+          slug
+        })
       });
       const data = await res.json();
+      
       if (data.url) {
-        toast.success(
-          <div className="flex flex-col gap-1">
-            <span>Deployment successful!</span>
-            <a href={data.url} target="_blank" rel="noreferrer" className="text-cyan-400 font-bold hover:underline">{data.url}</a>
-          </div>
-        );
-        await supabase.from("messages").insert({ project_id: id as string, role: "assistant", content: `Your site is deployed at: ${data.url}` });
-        addMessage({ role: "assistant", content: `Your site is deployed at: ${data.url}`, id: crypto.randomUUID() });
+        setProjectSlug(data.slug);
+        toast.success("Project published successfully!");
+        
+        // Add to chat
+        const deploymentMsg = `✨ Your project is live at: ${data.url}`;
+        await supabase.from("messages").insert({ project_id: id as string, role: "assistant", content: deploymentMsg });
+        addMessage({ role: "assistant", content: deploymentMsg, id: crypto.randomUUID() });
+        
+        return data.url;
       } else {
         throw new Error(data.error || "Unknown error");
       }
     } catch (e: any) {
       toast.error("Deployment failed: " + e.message);
-    } finally {
-      setDeploying(false);
+      return null;
     }
   };
 
@@ -206,16 +213,7 @@ export default function ProjectEditorPage() {
       }
     }
 
-    let finalContent = content;
-    // If AI outputs index.html without CDN script, inject it
-    if (path === 'index.html' && !content.includes('cdn.tailwindcss.com')) {
-      finalContent = content.replace(
-        '</head>',
-        `  <script src="https://cdn.tailwindcss.com"></script>\n</head>`
-      );
-    }
-
-    await wc.fs.writeFile('/' + path, finalContent);
+    await wc.fs.writeFile('/' + path, content);
   };
 
   const handleRunFileUpdate = async (path: string, content: string) => {
@@ -297,19 +295,25 @@ export default function ProjectEditorPage() {
             <ShareIcon className="w-4 h-4 mr-2"/> Share
           </Button>
           
-          <Button size="sm" onClick={handleDeploy} disabled={deploying} className="h-9 font-medium transition-all shadow-glow-button hover:shadow-glow-primary active:scale-95 w-24">
-            {deploying ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-              </div>
-            ) : (
-              <><RocketIcon className="w-4 h-4 mr-2"/> Deploy</>
-            )}
+          <Button 
+            size="sm" 
+            onClick={() => setIsDeployModalOpen(true)}
+            className="h-9 font-medium transition-all shadow-glow-button hover:shadow-glow-primary active:scale-95 w-24"
+          >
+            <RocketIcon className="w-4 h-4 mr-2"/> Deploy
           </Button>
         </div>
       </header>
       
       <ApiKeyModal isOpen={isApiKeyModalOpen} onClose={() => setIsApiKeyModalOpen(false)} />
+      
+      <DeployModal 
+        isOpen={isDeployModalOpen}
+        onClose={() => setIsDeployModalOpen(false)}
+        onDeploy={handleDeploy}
+        projectName={projectName}
+        existingSlug={projectSlug}
+      />
 
       {/* Main Split Interface */}
       {/* @ts-ignore - shadcn types mismatch with react-resizable-panels v2 */}

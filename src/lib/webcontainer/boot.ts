@@ -43,6 +43,9 @@ export const starterFiles = {
           vite: '^5.0.0',
           '@vitejs/plugin-react': '^4.0.0',
           typescript: '^5.0.0',
+          tailwindcss: '^3.4.0',
+          autoprefixer: '^10.4.0',
+          postcss: '^8.4.0',
         },
       }, null, 2),
     },
@@ -62,6 +65,56 @@ export default defineConfig({
 })`,
     },
   },
+  'tailwind.config.js': {
+    file: {
+      contents: `/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    './index.html',
+    './src/**/*.{js,ts,jsx,tsx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        primary: {
+          DEFAULT: '#6366f1',
+          dark: '#4f46e5',
+          light: '#818cf8',
+        },
+        accent: {
+          DEFAULT: '#c084fc',
+          glow: '#e879f9',
+        },
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.5s ease-out forwards',
+        'slide-up': 'slideUp 0.4s ease-out forwards',
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
+      keyframes: {
+        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+        slideUp: { '0%': { opacity: '0', transform: 'translateY(16px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+      },
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+        'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+      },
+    },
+  },
+  plugins: [],
+}`,
+    },
+  },
+  'postcss.config.js': {
+    file: {
+      contents: `export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}`,
+    },
+  },
   'index.html': {
     file: {
       contents: `<!DOCTYPE html>
@@ -70,51 +123,6 @@ export default defineConfig({
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>App</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              primary: {
-                DEFAULT: '#6366f1',
-                dark: '#4f46e5',
-                light: '#818cf8',
-              },
-              accent: {
-                DEFAULT: '#c084fc',
-                glow: '#e879f9',
-              },
-              surface: {
-                DEFAULT: 'rgba(255, 255, 255, 0.05)',
-                hover: 'rgba(255, 255, 255, 0.1)',
-                bright: 'rgba(255, 255, 255, 0.2)',
-              }
-            },
-            animation: {
-              'fade-in': 'fadeIn 0.5s ease-out forwards',
-              'slide-up': 'slideUp 0.4s ease-out forwards',
-              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-            },
-            keyframes: {
-              fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
-              slideUp: { '0%': { opacity: '0', transform: 'translateY(16px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
-            },
-            backgroundImage: {
-              'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-              'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-            }
-          },
-        },
-      }
-    </script>
-    <style type="text/tailwindcss">
-      @layer base {
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { @apply bg-transparent; }
-        ::-webkit-scrollbar-thumb { @apply bg-white/10 rounded-full hover:bg-white/20; }
-      }
-    </style>
   </head>
   <body class="antialiased bg-slate-950 text-slate-200 min-h-screen selection:bg-indigo-500/30">
     <div id="root"></div>
@@ -123,10 +131,25 @@ export default defineConfig({
 </html>`,
     },
   },
+  'src/index.css': {
+    file: {
+      contents: `@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+}`,
+    },
+  },
   'src/main.tsx': {
     file: {
       contents: `import React from 'react'
 import ReactDOM from 'react-dom/client'
+import './index.css'
 import App from './App'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
